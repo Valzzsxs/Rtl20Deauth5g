@@ -1,4 +1,3 @@
-#include <SPI.h>
 #include <Arduino.h>
 #ifndef SPI_MODE0
 #define SPI_MODE0 0x00
@@ -36,10 +35,10 @@ enum portals{
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-// Replace with your specific U8G2 constructor for your 1.3" OLED (e.g. SH1106 or SSD1306)
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+// Replace with your specific U8G2 constructor for your OLED
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
-// 5-way button pins (update these to match your actual wiring)
+// 5-way button pins (update these placeholder pins to match your actual wiring)
 #define BTN_UP    PA26
 #define BTN_DOWN  PA25
 #define BTN_LEFT  PA14
@@ -79,7 +78,7 @@ extern u8 rtw_get_band_type(void);
 bool apActive = false;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
-// removed dup
+bool serveBegined =false;
 String ssid="";
 uint32_t current_num = 0;
 
@@ -104,26 +103,7 @@ String generateRandomString(int len){
   return randstr;
 }
 
-rtw_result_t scanResultHandler(rtw_scan_handler_result_t *scan_result) {
-  rtw_scan_result_t *record;
-  if (scan_result->scan_complete == 0) {
-    record = &scan_result->ap_details;
-    record->SSID.val[record->SSID.len] = 0;
-    WiFiScanResult result;
-    result.ssid = String((const char *)record->SSID.val);
-    if(result.ssid.length()==0)result.ssid = String("<empty>");
-    result.channel = record->channel;
-    result.rssi = record->signal_strength;
 
-    memcpy(&result.bssid, &record->BSSID, 6);
-    char bssid_str[] = "XX:XX:XX:XX:XX:XX";
-    snprintf(bssid_str, sizeof(bssid_str), "%02X:%02X:%02X:%02X:%02X:%02X", result.bssid[0], result.bssid[1], result.bssid[2], result.bssid[3], result.bssid[4], result.bssid[5]);
-    result.bssid_str = bssid_str;
-    result.security = record->security;
-    scan_results.push_back(result);
-  }
-  return RTW_SUCCESS;
-}
 
 // UI State vars
 int selected_menu_item = 0;
@@ -145,7 +125,7 @@ int readButtons() {
 
 void drawMenu() {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_ncenB08_tr);
+  u8g2.setFont(u8g2_font_5x7_tr);
 
   if (currentState == MAIN_MENU) {
     const char* items[] = {"Scan Networks", "Random SSID", "Rickroll SSID", "Stop All"};
@@ -204,11 +184,32 @@ String parseRequest(String request) {
 }
 
 //DNS
-// removed dup
+// bool apActive = false;
 
 
+// int status = WL_IDLE_STATUS;
 
-bool serveBegined =false;
+rtw_result_t scanResultHandler(rtw_scan_handler_result_t *scan_result) {
+  rtw_scan_result_t *record;
+  if (scan_result->scan_complete == 0) {
+    record = &scan_result->ap_details;
+    record->SSID.val[record->SSID.len] = 0;
+    WiFiScanResult result;
+    result.ssid = String((const char *)record->SSID.val);
+    if(result.ssid.length()==0)result.ssid = String("<empty>");
+    result.channel = record->channel;
+    result.rssi = record->signal_strength;
+
+    memcpy(&result.bssid, &record->BSSID, 6);
+    char bssid_str[] = "XX:XX:XX:XX:XX:XX";
+    snprintf(bssid_str, sizeof(bssid_str), "%02X:%02X:%02X:%02X:%02X:%02X", result.bssid[0], result.bssid[1], result.bssid[2], result.bssid[3], result.bssid[4], result.bssid[5]);
+    result.bssid_str = bssid_str;
+    result.security = record->security;
+    scan_results.push_back(result);
+  }
+  return RTW_SUCCESS;
+}
+// WiFiServer server(80);
 
 
 void createAP(char* ssid, char* channel, char* password){
@@ -383,8 +384,8 @@ void handleRequest(WiFiClient &client,enum portals portalType,String ssid){
             }
 }
 
-int scanNetworks(int miliseconds) {
 
+int scanNetworks(int miliseconds) {
   scan_results.clear();
   if (wifi_scan_networks(scanResultHandler, NULL) == RTW_SUCCESS) {
     delay(miliseconds);
@@ -550,7 +551,6 @@ void loop() {
     }
   }
 
-
   if (apActive) {
     WiFiClient client = server.available();
     if (client) {
@@ -561,9 +561,9 @@ void loop() {
           char character = client.read();
           if (character == '\n') {
             while(client.available()){
-            character=client.read();
-            client.clearWriteError();
-            delay(1);
+              character=client.read();
+              client.clearWriteError();
+              delay(1);
             }
             String path = parseRequest(request);
             Serial.println(request);
@@ -572,10 +572,10 @@ void loop() {
                 handleRequest(client, (enum portals)portal, scan_results[deauth_wifis[0]].ssid);
               else
                 handleRequest(client, (enum portals)portal, "router");
-          }else{
-            handle404(client);
-          }
-          break;
+            }else{
+              handle404(client);
+            }
+            break;
           }else if(character == '%'){
             char buff[2] ;
             client.read(buff,2);
