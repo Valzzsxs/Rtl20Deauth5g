@@ -20,7 +20,6 @@ static void dnss_receive_udp_packet_handler(
         ( void ) arg;
         DNSHeader dnsHeader;
         DNSQuestion dnsQuestion;
-        int sizeUrl;
 
         memcpy(&dnsHeader, udp_packet_buffer->payload, DNS_HEADER_SIZE);
         if (dnsHeader.QR != DNS_QR_QUERY) {
@@ -38,7 +37,6 @@ static void dnss_receive_udp_packet_handler(
             ++enoflbls;                                                                                      // advance after null terminator
             dnsQuestion.QName = (uint8_t *)udp_packet_buffer->payload + DNS_HEADER_SIZE;                                                // we can reference labels from the request
             dnsQuestion.QNameLength = enoflbls - (char *)udp_packet_buffer->payload - DNS_HEADER_SIZE;
-            sizeUrl = static_cast<int>(dnsQuestion.QNameLength);
 
             /*
                 check if we aint going out of pkt bounds
@@ -51,7 +49,6 @@ static void dnss_receive_udp_packet_handler(
             memcpy(&dnsQuestion.QClass, enoflbls + sizeof(dnsQuestion.QType), sizeof(dnsQuestion.QClass));
         }
         if (dnsHeader.OPCode == DNS_OPCODE_QUERY && requestIncludesOnlyOneQuestion(dnsHeader)){
-            struct dns_hdr *q = (struct dns_hdr*) udp_packet_buffer->payload;
 
 
             int questionSectionSize = dnsQuestion.QNameLength + sizeof(uint16_t) + sizeof(uint16_t);  // QName + QType + QClass
