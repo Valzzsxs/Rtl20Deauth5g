@@ -40,8 +40,8 @@ enum portals{
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 // 5-way button pins (update these to match your actual wiring)
-#define BTN_UP    PA26
-#define BTN_DOWN  PA25
+#define BTN_UP    PA12
+#define BTN_DOWN  PA27
 #define BTN_LEFT  PA14
 #define BTN_RIGHT PA15
 #define BTN_SEL   PA13
